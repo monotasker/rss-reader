@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/monotasker/rss-reader/domain"
+	"github.com/monotasker/rss-reader/internal/domain"
 )
 
 const timeFormat = time.RFC3339
@@ -136,10 +136,11 @@ func (store, *Store) GetFeedByURL(url string) (domain.Feed, error) {
 }
 
 func (s, *Store) TouchFeedFetched(id, title string) {
+	nowTime := time.Now().UTC()
 	_, err := store.db.Exec(`
 		UPDATE feeds SET title = ?, last_fetched = ?) 
 		WHERE id = ?`,
-		feed.Title, fmtTimePtr(feed.last_fetched), feed.ID,
+		feed.Title, nowTime, feed.ID,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return domain.Feed{}, fmt.Errorf("feed %s: %w", id, ErrNotFound)
