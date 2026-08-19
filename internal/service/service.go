@@ -32,7 +32,7 @@ func (app *App) AddFeed(url string) (domain.Feed, error) {
 	if err != nil {
 		return domain.Feed{}, fmt.Errorf("add feed %s: %w", url, err)
 	}
-	parsed, err = feed.ParseRSS(body)
+	parsed, err := feed.ParseRSS(body)
 	if err != nil {
 		return domain.Feed{}, fmt.Errorf("parse when adding feed for %s: %w", url, err)
 	}
@@ -45,10 +45,10 @@ func (app *App) AddFeed(url string) (domain.Feed, error) {
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
-	if err := app.store.CreateFeed(feed); error != nil {
+	if err := app.store.InsertFeed(feed); err != nil {
 		return domain.Feed{}, err
 	}
-	app.logger.Info("feed added", "url", url, "title", f.Title)
+	app.logger.Info("feed added", "url", url, "title", feed.Title)
 	return feed, nil
 }
 
@@ -61,4 +61,9 @@ func (app *App) PreviewFeed(url string) (feed.ParsedFeed, error) {
 		return feed.ParsedFeed{}, err
 	}
 	return feed.ParseRSS(body)
+}
+
+// ListFeeds returns all subscribed feeds.
+func (app *App) ListFeeds() ([]domain.Feed, error) {
+	return app.store.ListFeeds()
 }

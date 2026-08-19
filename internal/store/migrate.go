@@ -1,12 +1,14 @@
 package store
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // migrations is append-only. Do not edit existing entries
 // but only add new ones. Index i holds the migration.
 var migrations = []string{
 	// 0 -> 1: initial schema
- 	`
+	`
 	CREATE TABLE feeds (
 		id 			TEXT PRIMARY KEY,
 		url 		TEXT NOT NULL UNIQUE,
@@ -32,21 +34,20 @@ var migrations = []string{
 		updated_at 		TEXT,
 		UNIQUE(feed_id, guid)
 	);
-	`
-}
+`}
 
-func (s, *Store) migrate() error {
+func (store *Store) migrate() error {
 	var version int
-	if err := s.db.QueryRow(`PRAGMA user_version`).Scan(&version); err != nil {
+	if err := store.db.QueryRow(`PRAGMA user_version`).Scan(&version); err != nil {
 		return fmt.Errorf("read user_version: %w", err)
 	}
 
 	for v := version; v < len(migrations); v++ {
-		trans, err := s.db.Begin()
+		trans, err := store.db.Begin()
 		if err != nil {
 			return fmt.Errorf("begin migration %d: %w", v+1, err)
 		}
-		if _, err := trans.Exec(migrations[v]); err != nill {
+		if _, err := trans.Exec(migrations[v]); err != nil {
 			trans.Rollback()
 			return fmt.Errorf("apply migration %d: %w", v+1, err)
 		}

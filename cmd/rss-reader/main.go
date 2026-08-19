@@ -32,17 +32,15 @@ func run() error {
 
 	app := service.New(st, logger)
 
-	parsed, err := app.PreviewFeed("https://hnrss.org/frontpage")
+	feed, err := app.AddFeed("https://hnrss.org/frontpage")
 	if err != nil {
 		return err
 	}
+	fmt.Println("subscribed:", feed.Title, feed.ID)
 
-	fmt.Printf("%s -- %d items\n", parsed.Title, len(parsed.Items))
-	for i, item := range parsed.Items {
-		if i >= 5 {
-			break
-		}
-		fmt.Printf(" %s\n  %s\n", item.Title, item.Link)
+	feeds, err := app.ListFeeds()
+	for _, f := range feeds {
+		fmt.Printf(" %s\n  %s\n", f.Title, f.URL)
 	}
 
 	return nil
