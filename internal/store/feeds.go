@@ -162,14 +162,13 @@ func (store *Store) TouchFeedFetched(id, title string) (domain.Feed, error) {
 	return feed, nil
 }
 
-func (store *Store) DeleteFeed(id, url string) error {
+func (store *Store) DeleteFeed(url string) error {
 	result, err := store.db.Exec(`
-		DELETE feeds WHERE id = ?, url = ?`,
-		id, url,
+		DELETE FROM feeds WHERE url = ?`,
+		url,
 	)
 	if err != nil {
-		return fmt.Errorf("delete feed %s %s: %w", id, url, err)
-
+		return fmt.Errorf("delete feed %s: %w", url, err)
 	}
 
 	rowsAffected, err := result.RowsAffected()
@@ -177,7 +176,7 @@ func (store *Store) DeleteFeed(id, url string) error {
 		return fmt.Errorf("check rows affected: %w", err)
 	}
 	if rowsAffected == 0 {
-		return fmt.Errorf("feed %s: %w", id, ErrNotFound)
+		return fmt.Errorf("feed %s: %w", url, ErrNotFound)
 	}
 
 	return nil

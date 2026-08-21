@@ -52,6 +52,13 @@ func (app *App) AddFeed(url string) (domain.Feed, error) {
 	return feed, nil
 }
 
+func (app *App) RemoveFeed(url string) error {
+	if err := app.store.DeleteFeed(url); err != nil {
+		return err
+	}
+	return nil
+}
+
 // PreviewFeed fetches and parses the URL for a feed.
 // The function returns the parsed feed content without
 // saving anything.

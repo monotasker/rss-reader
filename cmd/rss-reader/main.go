@@ -34,7 +34,10 @@ func run() error {
 
 	feed, err := app.AddFeed("https://hnrss.org/frontpage")
 	if err != nil {
-		return err
+		if err := app.RemoveFeed("https://hnrss.org/frontpage"); err != nil {
+			return err
+		}
+		fmt.Println("removed feed")
 	}
 	fmt.Println("subscribed:", feed.Title, feed.ID)
 
