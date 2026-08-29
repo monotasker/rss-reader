@@ -105,7 +105,7 @@ func (store *Store) GetFeed(id string) (domain.Feed, error) {
 
 // ListFeed returns domain.Feed instances for all feeds ordered by title.
 func (store *Store) ListFeeds() ([]domain.Feed, error) {
-	rows, err := store.db.Query(`SELECT` + feedCols + ` FROM feeds ORDER BY title COLLATE NOCASE`)
+	rows, err := store.db.Query(`SELECT ` + feedCols + ` FROM feeds ORDER BY title COLLATE NOCASE`)
 	if err != nil {
 		return nil, fmt.Errorf("list feeds: %w", err)
 	}
