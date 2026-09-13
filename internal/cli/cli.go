@@ -61,7 +61,7 @@ func Run(app *service.App, args []string) int {
 }
 
 func printUsage() {
-	fmt.Println("rss-reader - a fast, simple feed reader\n\n")
+	fmt.Println("rss-reader - a fast, simple feed reader")
 	fmt.Println("Commands:")
 	for name, c := range commands {
 		fmt.Printf("    %-10s %s\n", name, c.summary)

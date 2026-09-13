@@ -3,6 +3,7 @@
 package service
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -28,6 +29,9 @@ func New(store *store.Store, logger *slog.Logger) *App {
 // AddFeed subscribes to a feed URL: it fetches once to validate
 // the feed and learn its title, then stores it.
 func (app *App) AddFeed(url string) (domain.Feed, error) {
+	if u, err := url.Parse(url); err != nil {
+		return domain.Feed{}, fmt.Errorf("invalid feed URL: %w", err)
+	}
 	body, err := feed.Fetch(url)
 	if err != nil {
 		return domain.Feed{}, fmt.Errorf("add feed %s: %w", url, err)
@@ -52,11 +56,16 @@ func (app *App) AddFeed(url string) (domain.Feed, error) {
 	return feed, nil
 }
 
-func (app *App) RemoveFeed(url string) error {
-	if err := app.store.DeleteFeed(url); err != nil {
-		return err
+func (app *App) RemoveFeed(ref string) (domain.Feed, error) {
+	feed, err := app.resolveFeed(ref)
+	if err != nil {
+		return domain.Feed{}, fmt.Errorf("retrieve feed %s for removal: %w", ref, err)
 	}
-	return nil
+	if err := app.store.DeleteFeed(feed.URL); err != nil {
+		return domain.Feed{}, err
+	}
+	app.logger.Info("feed removed", "id", feed.ID, "url", feed.URL)
+	return feed, nil
 }
 
 // PreviewFeed fetches and parses the URL for a feed.
@@ -73,4 +82,20 @@ func (app *App) PreviewFeed(url string) (feed.ParsedFeed, error) {
 // ListFeeds returns all subscribed feeds.
 func (app *App) ListFeeds() ([]domain.Feed, error) {
 	return app.store.ListFeeds()
+}
+
+// resolveFeed finds a feed by URL first, then by ID.
+func (app *App) resolveFeed(ref string) (domain.Feed, error) {
+	f, err := app.store.GetFeedByURL(ref)
+	if err == nil {
+		return f, nil
+	}
+	if !errors.Is(err, store.ErrNotFound) {
+		return domain.Feed{}, err
+	}
+	feed, err := app.store.GetFeed(ref)
+	if err != nil {
+		return domain.Feed{}, err
+	}
+	return feed, nil
 }
