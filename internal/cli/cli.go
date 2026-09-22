@@ -1,15 +1,18 @@
 package cli
 
 import (
+	"cmp"
+	"context"
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 
 	"github.com/monotasker/rss-reader/internal/service"
 )
 
 // commandFunc is the signature every subcommand implements
-type commandFunc func(app *service.App, args []string) error
+type commandFunc func(ctx context.Context, app *service.App, args []string) error
 
 // command pairs an implementation with its help text
 type command struct {
@@ -39,6 +42,8 @@ func Run(app *service.App, args []string) int {
 		return 0
 	}
 
+	ctx := context.Background()
+
 	cmd, ok := commands[args[0]]
 	if !ok {
 		fmt.Fprintf(os.Stderr, "unknown command %q\n\n", args[0])
@@ -46,7 +51,7 @@ func Run(app *service.App, args []string) int {
 		return 2
 	}
 
-	err := cmd.run(app, args[1:])
+	err := cmd.run(ctx, app, args[1:])
 	var ue usageError
 	switch {
 	case err == nil:
@@ -63,7 +68,14 @@ func Run(app *service.App, args []string) int {
 func printUsage() {
 	fmt.Println("rss-reader - a fast, simple feed reader")
 	fmt.Println("Commands:")
-	for name, c := range commands {
-		fmt.Printf("    %-10s %s\n", name, c.summary)
+
+	keys := make([]string, 0, len(commands))
+	for key := range commands {
+		keys = append(keys, key)
+	}
+	slices.SortFunc(keys, cmp.Compare)
+
+	for _, k := range keys {
+		fmt.Printf("    %-10s %s\n", k, commands[k].summary)
 	}
 }

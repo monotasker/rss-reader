@@ -24,7 +24,10 @@ func main() {
 	}
 	defer st.Close()
 
-	app := service.New(st, logger)
+	app, err := service.New(st, logger)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "error creating application:", err)
+	}
 	code := cli.Run(app, os.Args[1:])
 	st.Close()
 	os.Exit(code)

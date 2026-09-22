@@ -1,6 +1,7 @@
 package feed
 
 import (
+	"context"
 	"encoding/xml"
 	"fmt"
 	"time"
@@ -41,7 +42,7 @@ type ParsedItem struct {
 }
 
 // ParseRSS parses an RSS 2.0 feed into a ParsedFeed
-func ParseRSS(data []byte) (ParsedFeed, error) {
+func ParseRSS(ctx context.Context, data []byte) (ParsedFeed, error) {
 	var doc rssDocument
 	if err := xml.Unmarshal(data, &doc); err != nil {
 		return ParsedFeed{}, fmt.Errorf("parse rss: %w", err)

@@ -3,6 +3,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -17,26 +18,31 @@ import (
 // App provides central access to the application dependencies.
 // Its methods provide the application business logic.
 type App struct {
-	store  *store.Store
-	logger *slog.Logger
+	store   *store.Store
+	fetcher *feed.Fetcher
+	logger  *slog.Logger
 }
 
 // New initializes an App with its dependencies.
-func New(store *store.Store, logger *slog.Logger) *App {
-	return &App{store: store, logger: logger}
+func New(store *store.Store, logger *slog.Logger) (*App, error) {
+	fetcher, err := feed.NewFetcher()
+	if err != nil {
+		return nil, fmt.Errorf("create fetcher in App: %w", err)
+	}
+	return &App{store: store, fetcher: fetcher, logger: logger}, nil
 }
 
 // AddFeed subscribes to a feed URL: it fetches once to validate
 // the feed and learn its title, then stores it.
-func (app *App) AddFeed(url string) (domain.Feed, error) {
-	if u, err := url.Parse(url); err != nil {
-		return domain.Feed{}, fmt.Errorf("invalid feed URL: %w", err)
+func (app *App) AddFeed(ctx context.Context, url string) (domain.Feed, error) {
+	if err := validateURL(url); err != nil {
+		return domain.Feed{}, err
 	}
-	body, err := feed.Fetch(url)
+	body, err := app.fetcher.Fetch(ctx, url)
 	if err != nil {
 		return domain.Feed{}, fmt.Errorf("add feed %s: %w", url, err)
 	}
-	parsed, err := feed.ParseRSS(body)
+	parsed, err := feed.ParseRSS(ctx, body)
 	if err != nil {
 		return domain.Feed{}, fmt.Errorf("parse when adding feed for %s: %w", url, err)
 	}
@@ -49,19 +55,19 @@ func (app *App) AddFeed(url string) (domain.Feed, error) {
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
-	if err := app.store.InsertFeed(feed); err != nil {
+	if err := app.store.InsertFeed(ctx, feed); err != nil {
 		return domain.Feed{}, err
 	}
 	app.logger.Info("feed added", "url", url, "title", feed.Title)
 	return feed, nil
 }
 
-func (app *App) RemoveFeed(ref string) (domain.Feed, error) {
-	feed, err := app.resolveFeed(ref)
+func (app *App) RemoveFeed(ctx context.Context, ref string) (domain.Feed, error) {
+	feed, err := app.resolveFeed(ctx, ref)
 	if err != nil {
 		return domain.Feed{}, fmt.Errorf("retrieve feed %s for removal: %w", ref, err)
 	}
-	if err := app.store.DeleteFeed(feed.URL); err != nil {
+	if err := app.store.DeleteFeed(ctx, feed.URL); err != nil {
 		return domain.Feed{}, err
 	}
 	app.logger.Info("feed removed", "id", feed.ID, "url", feed.URL)
@@ -71,29 +77,29 @@ func (app *App) RemoveFeed(ref string) (domain.Feed, error) {
 // PreviewFeed fetches and parses the URL for a feed.
 // The function returns the parsed feed content without
 // saving anything.
-func (app *App) PreviewFeed(url string) (feed.ParsedFeed, error) {
-	body, err := feed.Fetch(url)
+func (app *App) PreviewFeed(ctx context.Context, url string) (feed.ParsedFeed, error) {
+	body, err := app.fetcher.Fetch(ctx, url)
 	if err != nil {
 		return feed.ParsedFeed{}, err
 	}
-	return feed.ParseRSS(body)
+	return feed.ParseRSS(ctx, body)
 }
 
 // ListFeeds returns all subscribed feeds.
-func (app *App) ListFeeds() ([]domain.Feed, error) {
-	return app.store.ListFeeds()
+func (app *App) ListFeeds(ctx context.Context) ([]domain.Feed, error) {
+	return app.store.ListFeeds(ctx)
 }
 
 // resolveFeed finds a feed by URL first, then by ID.
-func (app *App) resolveFeed(ref string) (domain.Feed, error) {
-	f, err := app.store.GetFeedByURL(ref)
+func (app *App) resolveFeed(ctx context.Context, ref string) (domain.Feed, error) {
+	f, err := app.store.GetFeedByURL(ctx, ref)
 	if err == nil {
 		return f, nil
 	}
 	if !errors.Is(err, store.ErrNotFound) {
 		return domain.Feed{}, err
 	}
-	feed, err := app.store.GetFeed(ref)
+	feed, err := app.store.GetFeed(ctx, ref)
 	if err != nil {
 		return domain.Feed{}, err
 	}

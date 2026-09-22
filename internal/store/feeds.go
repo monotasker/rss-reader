@@ -1,6 +1,7 @@
 package store
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -44,7 +45,7 @@ func isUniqueViolation(err error) bool {
 
 // CreateFeed inserts feeds table row. Returns ErrDuplicate if the URL is already
 // in an existing row.
-func (store *Store) InsertFeed(feed domain.Feed) error {
+func (store *Store) InsertFeed(ctx context.Context, feed domain.Feed) error {
 	_, err := store.db.Exec(`
 		INSERT INTO feeds (id, url, title, last_fetched, created_at, updated_at) 
 		VALUES (?, ?, ?, ?, ?, ?)`,
@@ -66,7 +67,7 @@ type rowScanner interface {
 	Scan(dest ...any) error
 }
 
-func scanFeed(row rowScanner) (domain.Feed, error) {
+func scanFeed(ctx context.Context, row rowScanner) (domain.Feed, error) {
 	var feed domain.Feed
 	var lastFetched *string
 	var created, updated string
@@ -91,9 +92,9 @@ func scanFeed(row rowScanner) (domain.Feed, error) {
 const feedCols = `id, url, title, last_fetched, created_at, updated_at`
 
 // GetFeed returns a domain.Feed for the given id, or ErrNotFound.
-func (store *Store) GetFeed(id string) (domain.Feed, error) {
+func (store *Store) GetFeed(ctx context.Context, id string) (domain.Feed, error) {
 	row := store.db.QueryRow(`SELECT `+feedCols+` FROM feeds WHERE id = ?`, id)
-	feed, err := scanFeed(row)
+	feed, err := scanFeed(ctx, row)
 	if errors.Is(err, sql.ErrNoRows) {
 		return domain.Feed{}, fmt.Errorf("feed %s: %w", id, ErrNotFound)
 	}
@@ -104,7 +105,7 @@ func (store *Store) GetFeed(id string) (domain.Feed, error) {
 }
 
 // ListFeed returns domain.Feed instances for all feeds ordered by title.
-func (store *Store) ListFeeds() ([]domain.Feed, error) {
+func (store *Store) ListFeeds(ctx context.Context) ([]domain.Feed, error) {
 	rows, err := store.db.Query(`SELECT ` + feedCols + ` FROM feeds ORDER BY title COLLATE NOCASE`)
 	if err != nil {
 		return nil, fmt.Errorf("list feeds: %w", err)
@@ -113,7 +114,7 @@ func (store *Store) ListFeeds() ([]domain.Feed, error) {
 
 	var feeds []domain.Feed
 	for rows.Next() {
-		feed, err := scanFeed(rows)
+		feed, err := scanFeed(ctx, rows)
 		if err != nil {
 			return nil, fmt.Errorf("list feeds scan: %w", err)
 		}
@@ -123,9 +124,9 @@ func (store *Store) ListFeeds() ([]domain.Feed, error) {
 }
 
 // GetFeedByURL returns a domain.Feed instance for the feed matching the url, or ErrNotFound.
-func (store *Store) GetFeedByURL(url string) (domain.Feed, error) {
+func (store *Store) GetFeedByURL(ctx context.Context, url string) (domain.Feed, error) {
 	row := store.db.QueryRow(`SELECT `+feedCols+` FROM feeds WHERE url = ?`, url)
-	feed, err := scanFeed(row)
+	feed, err := scanFeed(ctx, row)
 	if errors.Is(err, sql.ErrNoRows) {
 		return domain.Feed{}, fmt.Errorf("feed %s: %w", url, ErrNotFound)
 	}
@@ -135,7 +136,7 @@ func (store *Store) GetFeedByURL(url string) (domain.Feed, error) {
 	return feed, nil
 }
 
-func (store *Store) TouchFeedFetched(id, title string) (domain.Feed, error) {
+func (store *Store) TouchFeedFetched(ctx context.Context, id string, title string) (domain.Feed, error) {
 	nowTime := time.Now().UTC()
 	result, err := store.db.Exec(`
 		UPDATE feeds SET title = ?, last_fetched = ?) 
@@ -154,7 +155,7 @@ func (store *Store) TouchFeedFetched(id, title string) (domain.Feed, error) {
 		return domain.Feed{}, fmt.Errorf("feed %s: %w", id, ErrNotFound)
 	}
 
-	feed, err := store.GetFeed(id)
+	feed, err := store.GetFeed(ctx, id)
 	if err != nil {
 		return domain.Feed{}, fmt.Errorf("get updated feed %s: %w", id, err)
 	}
@@ -162,7 +163,7 @@ func (store *Store) TouchFeedFetched(id, title string) (domain.Feed, error) {
 	return feed, nil
 }
 
-func (store *Store) DeleteFeed(url string) error {
+func (store *Store) DeleteFeed(ctx context.Context, url string) error {
 	result, err := store.db.Exec(`
 		DELETE FROM feeds WHERE url = ?`,
 		url,
