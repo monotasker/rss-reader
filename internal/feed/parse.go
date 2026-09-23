@@ -1,3 +1,4 @@
+// Package feed provides feed parsing and fetching logic for rss-reader.
 package feed
 
 import (

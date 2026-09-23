@@ -1,6 +1,7 @@
 package feed_test
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -27,6 +28,7 @@ const sampleRSSResponse = `<?xml version="1.0" encoding="UTF-8"?>
 </rss>`
 
 func TestParseRSS(t *testing.T) {
+	ctx := context.Background()
 	tests := []struct {
 		name             string
 		input            []byte
@@ -49,7 +51,7 @@ func TestParseRSS(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := feed.ParseRSS(tt.input)
+			got, err := feed.ParseRSS(ctx, tt.input)
 			if err != nil {
 				t.Fatalf("ParseRSS: %v", err)
 			}
@@ -77,7 +79,8 @@ func TestParseRSS(t *testing.T) {
 }
 
 func TestParseRSSRejectsGarbage(t *testing.T) {
-	if _, err := feed.ParseRSS([]byte("this is not xml")); err == nil {
+	ctx := context.Background()
+	if _, err := feed.ParseRSS(ctx, []byte("this is not xml")); err == nil {
 		t.Fatal("ParseRSS accepted garbage input")
 	}
 }

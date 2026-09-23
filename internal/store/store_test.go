@@ -1,6 +1,7 @@
 package store_test
 
 import (
+	"context"
 	"errors"
 	"path/filepath"
 	"testing"
@@ -35,14 +36,15 @@ func testFeed(url string) domain.Feed {
 }
 
 func TestCreateAndGetFeed(t *testing.T) {
+	ctx := context.Background()
 	st := newTestStore(t)
 	f := testFeed("https://example.com/feed")
 
-	if err := st.InsertFeed(f); err != nil {
+	if err := st.InsertFeed(ctx, f); err != nil {
 		t.Fatalf("insert feed: %v", err)
 	}
 
-	got, err := st.GetFeed(f.ID)
+	got, err := st.GetFeed(ctx, f.ID)
 	if err != nil {
 		t.Fatalf("get feed %v: %v", f.ID, err)
 	}
@@ -56,27 +58,30 @@ func TestCreateAndGetFeed(t *testing.T) {
 }
 
 func TestCreateFeedDuplicate(t *testing.T) {
+	ctx := context.Background()
 	st := newTestStore(t)
 	f := testFeed("https://example.com/feed")
 
-	if err := st.InsertFeed(f); err != nil {
+	if err := st.InsertFeed(ctx, f); err != nil {
 		t.Fatalf("first inserted feed: %v", err)
 	}
-	err := st.InsertFeed(testFeed("https://example.com/feed")) // same URL
+	err := st.InsertFeed(ctx, testFeed("https://example.com/feed")) // same URL
 	if !errors.Is(err, store.ErrDuplicate) {
 		t.Fatalf("second feed insert returned %v, want store.ErrDuplicate", err)
 	}
 }
 
 func TestGetFeedNotFound(t *testing.T) {
+	ctx := context.Background()
 	st := newTestStore(t)
-	_, err := st.GetFeed("no-such-id")
+	_, err := st.GetFeed(ctx, "no-such-id")
 	if !errors.Is(err, store.ErrNotFound) {
 		t.Fatalf("err = %v, want store.ErrNotFound", err)
 	}
 }
 
 func TestListFeeds(t *testing.T) {
+	ctx := context.Background()
 	st := newTestStore(t)
 
 	feeds := []domain.Feed{
@@ -86,11 +91,11 @@ func TestListFeeds(t *testing.T) {
 		testFeed("https://example.com/feed4"),
 	}
 	for _, f := range feeds {
-		if err := st.InsertFeed(f); err != nil {
+		if err := st.InsertFeed(ctx, f); err != nil {
 			t.Fatalf("insert feed %s: %v", f.URL, err)
 		}
 	}
-	listed, err := st.ListFeeds()
+	listed, err := st.ListFeeds(ctx)
 	if err != nil {
 		t.Fatalf("list feeds: %v", err)
 	}

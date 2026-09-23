@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/monotasker/rss-reader/internal/domain"
+	"github.com/monotasker/rss-reader/internal/utils"
 )
 
 // UpsertItems inserts new items and refreshes existing ones.
@@ -50,10 +51,10 @@ func (store *Store) UpsertItems(ctx context.Context, feedID string, items []doma
 
 	inserted := 0
 	for _, item := range items {
-		if _, err := stmt.Exec(item.ID, item.GUID, item.Title, item.Link,
-			fmtTimePtr(item.PublishedAt), item.Summary, item.Content,
-			fmtTime(item.FetchedAt)); err != nil {
-			return 0, fmt.Errorf("upsert items: exec SQL statement for item %q: %w:", item.GUID, err)
+		if _, err := stmt.Exec(item.ID, feedID, item.GUID, item.Title, item.Link,
+			utils.FmtTimePointer(item.PublishedAt), item.Summary, item.Content,
+			utils.FmtTime(item.FetchedAt)); err != nil {
+			return 0, fmt.Errorf("upsert items: exec SQL statement for item %q: %w", item.GUID, err)
 		}
 		if !existing[item.GUID] {
 			inserted++

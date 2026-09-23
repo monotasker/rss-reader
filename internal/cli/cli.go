@@ -1,3 +1,4 @@
+// Package cli provides a command-line interface for rss-reader.
 package cli
 
 import (

@@ -1,3 +1,4 @@
+// Package store handles database interactions and low-level CRUD for rss-reader.
 package store
 
 import (
@@ -28,6 +29,6 @@ func Open(path string) (*Store, error) {
 }
 
 // Close closes the database connection.
-func (s *Store) Close() error {
-	return s.db.Close()
+func (store *Store) Close() error {
+	return store.db.Close()
 }

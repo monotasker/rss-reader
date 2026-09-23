@@ -9,32 +9,8 @@ import (
 	"time"
 
 	"github.com/monotasker/rss-reader/internal/domain"
+	"github.com/monotasker/rss-reader/internal/utils"
 )
-
-const timeFormat = time.RFC3339
-
-func fmtTime(t time.Time) string { return t.UTC().Format(timeFormat) }
-
-// fmtTimePtr convertys an optional time to an optional string
-func fmtTimePtr(t *time.Time) *string {
-	if t == nil {
-		return nil
-	}
-	timestring := fmtTime(*t)
-	return &timestring
-}
-
-// parseTimePtr converts an optional string back to time.Time
-func parseTimePtr(str *string) (*time.Time, error) {
-	if str == nil {
-		return nil, nil
-	}
-	timeObject, err := time.Parse(timeFormat, *str)
-	if err != nil {
-		return nil, err
-	}
-	return &timeObject, nil
-}
 
 // isUniqueViolation detects SQLite's unique constraint failure. The Go driver
 // doesn't export a typed error for  this, so we match SQLite's returned error
@@ -43,14 +19,14 @@ func isUniqueViolation(err error) bool {
 	return err != nil && strings.Contains(err.Error(), "UNIQUE constraint failed")
 }
 
-// CreateFeed inserts feeds table row. Returns ErrDuplicate if the URL is already
+// InsertFeed inserts feeds table row. Returns ErrDuplicate if the URL is already
 // in an existing row.
 func (store *Store) InsertFeed(ctx context.Context, feed domain.Feed) error {
 	_, err := store.db.Exec(`
 		INSERT INTO feeds (id, url, title, last_fetched, created_at, updated_at) 
 		VALUES (?, ?, ?, ?, ?, ?)`,
-		feed.ID, feed.URL, feed.Title, fmtTimePtr(feed.LastFetched),
-		fmtTime(feed.CreatedAt), fmtTime(feed.UpdatedAt),
+		feed.ID, feed.URL, feed.Title, utils.FmtTimePointer(feed.LastFetched),
+		utils.FmtTime(feed.CreatedAt), utils.FmtTime(feed.UpdatedAt),
 	)
 	if isUniqueViolation(err) {
 		return fmt.Errorf("feed %s: %w", feed.URL, ErrDuplicate)
@@ -76,13 +52,13 @@ func scanFeed(ctx context.Context, row rowScanner) (domain.Feed, error) {
 	if err != nil {
 		return domain.Feed{}, err
 	}
-	if feed.LastFetched, err = parseTimePtr(lastFetched); err != nil {
+	if feed.LastFetched, err = utils.ParseTimePointer(lastFetched); err != nil {
 		return domain.Feed{}, fmt.Errorf("bad last_fetched: %w", err)
 	}
-	if feed.CreatedAt, err = time.Parse(timeFormat, created); err != nil {
+	if feed.CreatedAt, err = utils.ParseTime(created); err != nil {
 		return domain.Feed{}, fmt.Errorf("bad created_at: %w", err)
 	}
-	if feed.UpdatedAt, err = time.Parse(timeFormat, updated); err != nil {
+	if feed.UpdatedAt, err = utils.ParseTime(updated); err != nil {
 		return domain.Feed{}, fmt.Errorf("bad updated_at: %w", err)
 	}
 
@@ -104,7 +80,7 @@ func (store *Store) GetFeed(ctx context.Context, id string) (domain.Feed, error)
 	return feed, nil
 }
 
-// ListFeed returns domain.Feed instances for all feeds ordered by title.
+// ListFeeds returns domain.Feed instances for all feeds ordered by title.
 func (store *Store) ListFeeds(ctx context.Context) ([]domain.Feed, error) {
 	rows, err := store.db.Query(`SELECT ` + feedCols + ` FROM feeds ORDER BY title COLLATE NOCASE`)
 	if err != nil {
@@ -139,9 +115,9 @@ func (store *Store) GetFeedByURL(ctx context.Context, url string) (domain.Feed, 
 func (store *Store) TouchFeedFetched(ctx context.Context, id string, title string) (domain.Feed, error) {
 	nowTime := time.Now().UTC()
 	result, err := store.db.Exec(`
-		UPDATE feeds SET title = ?, last_fetched = ?) 
+		UPDATE feeds SET title = ?, last_fetched = ? 
 		WHERE id = ?`,
-		title, nowTime, id,
+		title, utils.FmtTime(nowTime), id,
 	)
 	if err != nil {
 		return domain.Feed{}, fmt.Errorf("feed %s: %w", id, err)

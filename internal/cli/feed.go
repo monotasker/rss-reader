@@ -23,6 +23,8 @@ func runFeed(ctx context.Context, app *service.App, args []string) error {
 		return feedAdd(ctx, app, args[1:])
 	case "list":
 		return feedList(ctx, app, args[1:])
+	case "refresh":
+		return feedRefresh(ctx, app, args[1:])
 	case "remove":
 		return feedRemove(ctx, app, args[1:])
 	default:
@@ -79,6 +81,18 @@ func feedList(ctx context.Context, app *service.App, args []string) error {
 	for _, f := range feeds {
 		fmt.Fprintf(w, "%s\t%s\n", f.Title, f.URL)
 	}
+	return nil
+}
+
+func feedRefresh(ctx context.Context, app *service.App, args []string) error {
+	if len(args) != 1 {
+		return usagef("feed refresh <url-or-id>")
+	}
+	result, err := app.RefreshFeed(ctx, args[0])
+	if err != nil {
+		return err
+	}
+	fmt.Printf("%s: %d new items\n", result.Feed.Title, result.NewItems)
 	return nil
 }
 

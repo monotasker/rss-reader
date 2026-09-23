@@ -1,3 +1,4 @@
+// Package domain provides core domain data structures for rss-reader.
 package domain
 
 import "time"
