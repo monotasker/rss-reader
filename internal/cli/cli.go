@@ -23,7 +23,8 @@ type command struct {
 
 // commands maps the first CLI argument to its implementation
 var commands = map[string]command{
-	"feed": {runFeed, "manage feed subscriptions (add, list, remove)"},
+	"feed":  {runFeed, "manage feed subscriptions (add, list, remove, refresh)"},
+	"items": {runItems, "browse items and manage read/bookmarked/dismissed state"},
 }
 
 // usageError marks "the user typed it wrong" failures so Run can exit 2
