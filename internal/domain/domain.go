@@ -29,3 +29,12 @@ type Item struct {
 	FetchedAt   time.Time
 	UpdatedAt   *time.Time
 }
+
+// Tag is one label for categorizing feeds and items
+type Tag struct {
+	ID         string // uuidv7
+	Title      string
+	ParentTags []string // UUIDs of hierarchically related tags
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+}

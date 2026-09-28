@@ -8,6 +8,7 @@ import (
 	"github.com/monotasker/rss-reader/internal/cli"
 	"github.com/monotasker/rss-reader/internal/service"
 	"github.com/monotasker/rss-reader/internal/store"
+	"github.com/monotasker/rss-reader/internal/tui"
 )
 
 const Version = "0.2.0-dev"
@@ -28,7 +29,21 @@ func main() {
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "error creating application:", err)
 	}
-	code := cli.Run(app, os.Args[1:])
+	var code int
+	switch {
+	case len(os.Args) > 1:
+		code = cli.Run(app, os.Args[1:])
+	default:
+		tuiInstance := tui.NewTUI(app)
+		err := tuiInstance.Run()
+		switch {
+		case err == nil:
+			code = 0
+		default:
+			fmt.Fprintln(os.Stderr, "error:", err)
+			code = 1
+		}
+	}
 	st.Close()
 	os.Exit(code)
 }
